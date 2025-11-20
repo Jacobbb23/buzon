@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Instituto Tecnológico de Chihuahua II</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary:#003366;
+      --accent:#0074D9;
+      --muted:#7a7a7a;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --radius:12px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      font-family:'Inter',system-ui,Arial;
+      margin:0;
+      background:var(--bg);
+      color:#111;
+    }
+
+    header{
+      background:linear-gradient(90deg,var(--primary),#004b80);
+      color:white;
+      padding:18px 24px;
+      display:flex;
+      align-items:center;
+      gap:16px;
+    }
+
+    .logo{
+      width:56px;
+      height:56px;
+      background:rgba(255,255,255,0.08);
+      border-radius:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+    }
+
+    .container{max-width:1100px;margin:28px auto;padding:20px}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:0 6px 20px rgba(10,20,30,0.06);
+    }
+
+    input,select,textarea{
+      width:100%;
+      padding:10px;
+      border:1px solid #d9dfe8;
+      border-radius:8px;
+      font-size:0.95rem;
+    }
+    textarea{min-height:110px;resize:vertical}
+    label{font-size:0.85rem;color:var(--muted);display:block;margin-bottom:6px}
+    button.primary{
+      background:var(--primary);
+      color:white;
+      border:none;
+      padding:10px 14px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+    button.ghost{
+      background:transparent;
+      border:1px solid #dfe7ef;
+      padding:9px 12px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    /* Mejor visualización de registros */
+    .entry{
+      border-left:4px solid var(--primary);
+      padding:12px;
+      margin-bottom:12px;
+      border-radius:8px;
+      background:#fff;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .entry:hover{
+      transform:translateY(-2px);
+      box-shadow:0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .meta{
+      font-size:0.85rem;
+      color:var(--muted);
+      display:flex;
+      gap:8px;
+    }
+    .tag{
+      background:#eef6ff;
+      padding:4px 6px;
+      border-radius:6px;
+      font-size:0.8rem;
+      color:var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">U</div>
+  <div>
+    <h1 style="margin:0;font-size:1.2rem;">Instituto Tecnológico de Chihuahua II</h1>
+  </div>
+</header>
+
+<div class="container">
+  <div class="grid">
+
+    <!-- FORMULARIO -->
+    <div>
+      <div class="card">
+        <h2>Enviar sugerencia o felicitación</h2>
+        <form id="mainForm">
+          <label>Tipo</label>
+          <select id="tipo">
+            <option value="Felicitación">Felicitación</option>
+            <option value="Queja">Queja</option>
+            <option value="Sugerencia">Sugerencia</option>
+          </select>
+
+          <label style="margin-top:10px;">Título</label>
+          <input id="titulo" required placeholder="Escribe aquí">
+
+          <label style="margin-top:10px;">Mensaje</label>
+          <textarea id="mensaje" required placeholder="Describa la situación con detalles..."></textarea>
+
+          <label style="margin-top:10px;">Correo electrónico (obligatorio)</label>
+          <input id="correo" required placeholder="example@chihuahua2.tecnm.mx">
+
+          <div style="margin-top:14px;display:flex;gap:10px;align-items:center;">
+            <button class="primary" type="submit">Enviar</button>
+            <button class="ghost" type="button" id="clearBtn">Limpiar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>Estadísticas</h3>
+        <canvas id="chartSmall" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- REGISTROS -->
+    <aside>
+      <div class="card">
+        <h3>Registro público</h3>
+        <div id="list" style="margin-top:14px;max-height:520px;overflow:auto;"></div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('mainForm');
+
+function safe(value) {
+  return value ? value : '';
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('tipo').value;
+  const titulo = document.getElementById('titulo').value.trim();
+  const mensaje = document.getElementById('mensaje').value.trim();
+  const correo = document.getElementById('correo').value.trim();
+
+  if (!tipo || !titulo || !mensaje || !correo) {
+    Swal.fire({ icon: 'warning', text: 'Complete todos los campos.' });
+    return;
+  }
+
+  try {
+    const res = await fetch('http://localhost:3000/api/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo, titulo, mensaje, correo })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    Swal.fire({ icon: 'success', text: data.message });
+    form.reset();
+    loadList();
+  } catch (err) {
+    Swal.fire({ icon: 'error', text: err.message });
+  }
+});
+
+document.getElementById('clearBtn').onclick = () => form.reset();
+
+async function loadList() {
+  const res = await fetch('http://localhost:3000/api/listar');
+  const rows = await res.json();
+  const cont = document.getElementById('list');
+  cont.innerHTML = '';
+
+  if (!rows.length) {
+    cont.innerHTML = '<div style="color:var(--muted)">No hay registros aún.</div>';
+    return;
+  }
+
+  rows.forEach(r => {
+    cont.innerHTML += `
+      <div class="entry">
+        <div style="font-weight:600">${safe(r.titulo)}</div>
+        <div class="meta">${safe(r.tipo)}</div>
+        <p>${safe(r.mensaje)}</p>
+        <div style="font-size:0.8rem;color:gray;margin-top:6px;">
+          ${r.fecha ? new Date(r.fecha).toLocaleString() : ''}
+        </div>
+      </div>`;
+  });
+  updateChart(rows);
+}
+
+let chart = null;
+function updateChart(rows) {
+  const datos = { Queja: 0, Sugerencia: 0, Felicitación: 0 };
+  rows.forEach(r => {
+    if (datos.hasOwnProperty(r.tipo)) datos[r.tipo]++;
+  });
+  const ctx = document.getElementById('chartSmall');
+  if (!chart) {
+    chart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: Object.keys(datos), datasets: [{ data: Object.values(datos) }] },
+      options: { plugins: { legend: { position: 'bottom' } } }
+    });
+  } else {
+    chart.data.datasets[0].data = Object.values(datos);
+    chart.update();
+  }
+}
+
+loadList();
+</script>
+</body>
+</html>
+

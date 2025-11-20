@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de Administración - Buzón Tec2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #003366;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #eaeaea;
+    }
+    th {
+      background: #003366;
+      color: white;
+      font-weight: 600;
+    }
+    tr:hover {
+      background: #f0f6ff;
+    }
+    .delete-btn {
+      background: #d9534f;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .delete-btn:hover {
+      background: #c9302c;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+    input {
+      margin-top: 10px;
+      padding: 8px 12px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Panel de Administración</h1>
+  <input type="text" id="search" placeholder="Buscar por título, tipo o correo...">
+
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tipo</th>
+        <th>Título</th>
+        <th>Mensaje</th>
+        <th>Correo</th>
+        <th>Fecha</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+async function cargarDatos() {
+  const res = await fetch('http://localhost:3000/api/admin/listar');
+  const data = await res.json();
+  renderTabla(data);
+}
+
+function renderTabla(data) {
+  const tbody = document.querySelector('#tabla tbody');
+  tbody.innerHTML = '';
+
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:gray;">Sin registros</td></tr>`;
+    return;
+  }
+
+  data.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.id}</td>
+      <td>${r.tipo}</td>
+      <td>${r.titulo || ''}</td>
+      <td>${r.mensaje || ''}</td>
+      <td>${r.correo || ''}</td>
+      <td>${r.fecha ? new Date(r.fecha).toLocaleString() : ''}</td>
+      <td><button class="delete-btn" onclick="eliminar(${r.id})">Eliminar</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function eliminar(id) {
+  const confirmar = await Swal.fire({
+    title: '¿Eliminar registro?',
+    text: 'Esta acción no se puede deshacer',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  });
+  if (confirmar.isConfirmed) {
+    const res = await fetch(`http://localhost:3000/api/admin/eliminar/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    Swal.fire('Eliminado', data.message, 'success');
+    cargarDatos();
+  }
+}
+
+// Filtro de búsqueda
+document.getElementById('search').addEventListener('input', e => {
+  const texto = e.target.value.toLowerCase();
+  document.querySelectorAll('#tabla tbody tr').forEach(tr => {
+    tr.style.display = tr.innerText.toLowerCase().includes(texto) ? '' : 'none';
+  });
+});
+
+cargarDatos();
+</script>
+</body>
+</html>
+
